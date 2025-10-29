@@ -1,4 +1,5 @@
 #include <netinet/in.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,11 +7,10 @@
 #include <unistd.h>
 #define PORT 8080
 int main(int argc, char const* argv[]){
-    int server_fd, new_socket;
-    ssize_t valread;
+    int server_fd;
     struct sockaddr_in address;
-    int opt = 1;
     socklen_t addrlen = sizeof(address);
+    int opt = 1;
     char buffer[1024] = { 0 };
     char* hello = "Hello from server";
 
@@ -41,19 +41,21 @@ int main(int argc, char const* argv[]){
         exit(EXIT_FAILURE);
     }
     
-    // Принимаем очередное подключение из очереди и создаем для него сокет
-    if ((new_socket = accept(server_fd, (struct sockaddr*) &address, &addrlen)) < 0){
-        perror("accept");
-        exit(EXIT_FAILURE);
+    int client_fd;
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    while(1){
+        // Принимаем очередное подключение из очереди и создаем для него сокет
+        client_fd = accept(server_fd, (struct sockaddr*) &address, &addrlen);
+        if (client_fd < 0){
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+        read(client_fd, buffer, sizeof(buffer)-1);
+        printf("%s", buffer);
+        close(client_fd); // Разрываем соединение с клиентом
     }
 
-    // Читаем сообщение в буффер
-    valread = read(new_socket, buffer, 1024-1);
-    printf("%s \n", buffer); // Выводим полученное сообщение
-    send(new_socket, hello, strlen(hello), 0); // Отправляем ответ клиенту
-    printf("Hello message sent\n");
-    
-    close(new_socket); // Разрываем соединение с клиентом
     close(server_fd); // Закрываем сокет сервера
 
     return 0;
